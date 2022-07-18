@@ -2,7 +2,7 @@ package com.github.diamondminer88.myq
 
 import io.ktor.client.*
 import io.ktor.http.*
-import kotlinx.serialization.KSerializer
+import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -29,7 +29,7 @@ internal fun convertSetCookies(headers: Headers): String {
 		?: throw Error("Failed to parse cookies")
 }
 
-internal class UUIDSerializer : KSerializer<UUID> {
+public class UUIDSerializer : KSerializer<UUID> {
 	override val descriptor: SerialDescriptor
 		get() = PrimitiveSerialDescriptor("UUID", PrimitiveKind.STRING)
 
