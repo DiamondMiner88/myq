@@ -29,7 +29,6 @@ public class MyQ {
 	}
 
 	private var accounts: List<MyQAccount>? = null
-	private var tokenScope: String? = null
 	private var accessToken: String? = null
 	private var expiresAt: Long? = null
 	private var refreshToken: String? = null
@@ -53,7 +52,6 @@ public class MyQ {
 	private fun clearInternalState() {
 		http.config { followRedirects = true }
 		accounts = null
-		tokenScope = null
 		accessToken = null
 		expiresAt = null
 		refreshToken = null
@@ -69,15 +67,15 @@ public class MyQ {
 		val pkceVerifier = PkceUtils.generateCodeVerifier()
 		val pkceChallenge = PkceUtils.generateCodeChallenge(pkceVerifier)
 
-		val authPage = http.get("https://partner-identity.myq-cloud.com/connect/authorize") {
+		val authPage = http.get(MyQData.authUrl) {
 			header(HttpHeaders.UserAgent, "null")
 			url.parameters.apply {
-				append("client_id", "IOS_CGI_MYQ")
-				append("code_challenge", pkceChallenge)
-				append("code_challenge_method", "S256")
-				append("redirect_uri", "com.myqops://ios")
+				append("redirect_uri", MyQData.redirectUri)
+				append("client_id", MyQData.clientId)
+				append("scope", MyQData.tokenScope)
 				append("response_type", "code")
-				append("scope", "MyQ_Residential offline_access")
+				append("code_challenge_method", "S256")
+				append("code_challenge", pkceChallenge)
 			}
 		}
 
@@ -142,7 +140,7 @@ public class MyQ {
 					?: throw Error("Failed to get scope from app redirect")
 			)
 		}
-		val request = http.post("https://partner-identity.myq-cloud.com/connect/token") {
+		val request = http.post(MyQData.refreshUrl) {
 			header(HttpHeaders.UserAgent, "null")
 			header(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded)
 			setBody(requestBody.formUrlEncode())
@@ -174,15 +172,15 @@ public class MyQ {
 		val token = getRefreshToken()
 
 		val body = Parameters.build {
-			append("client_id", "IOS_CGI_MYQ")
-			append("client_secret", Base64.getDecoder().decode("VUQ0RFhuS3lQV3EyNUJTdw==").toString())
-			append("redirect_uri", "com.myqops://ios")
+			append("client_id", MyQData.clientId)
+			append("client_secret", MyQData.clientSecret)
+			append("redirect_uri", MyQData.redirectUri)
+			append("scope", MyQData.tokenScope)
 			append("grant_type", "refresh_token")
 			append("refresh_token", token)
-			append("scope", tokenScope!!)
 		}
 
-		val response = http.post("https://partner-identity.myq-cloud.com/connect/token") {
+		val response = http.post(MyQData.refreshUrl) {
 			header(HttpHeaders.UserAgent, "null")
 			header(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded)
 			setBody(body.formUrlEncode())
@@ -198,12 +196,11 @@ public class MyQ {
 	private fun updateAuthState(auth: MyQAuthResponse) {
 		this.refreshToken = auth.refreshToken
 		this.accessToken = auth.tokenType + ' ' + auth.accessToken
-		this.tokenScope = auth.tokenScope
 		this.expiresAt = System.currentTimeMillis() + auth.expiresInSeconds * 1000
 	}
 
 	internal suspend fun refreshAccounts() {
-		val response = http.get("https://accounts.myq-cloud.com/api/v6.0/accounts")
+		val response = http.get(MyQData.accountsUrl)
 		val data = response.body<MyQAccountsResponse>()
 		this.accounts = data.accounts
 	}
@@ -228,7 +225,7 @@ public class MyQ {
 	 * Fetch all devices for a specific account/home.
 	 */
 	public suspend fun fetchDevices(accountId: UUID): List<MyQDevice> {
-		return http.get("https://devices.myq-cloud.com/api/v5.2/Accounts/${accountId}/Devices")
+		return http.get(MyQData.devicesUrl(accountId))
 			.body<MyQDevicesResponse>()
 			.devices
 	}
@@ -249,8 +246,7 @@ public class MyQ {
 	 */
 	public suspend fun setGarageDoorState(accountId: UUID, deviceSerial: String, open: Boolean) {
 		val command = if (open) "open" else "close"
-		val url = "https://account-devices-gdo.myq-cloud.com/api/v5.2/Accounts/$accountId/door_openers/$deviceSerial/$command"
-		val response = http.put(url)
+		val response = http.put(MyQData.garageDoorUrl(accountId, deviceSerial, command))
 
 		if (!response.status.isSuccess()) {
 			throw Error("Failed to set garage door state! ${response.bodyAsText()}")
@@ -273,8 +269,7 @@ public class MyQ {
 	 */
 	public suspend fun setLampState(accountId: UUID, deviceSerial: String, isOn: Boolean) {
 		val command = if (isOn) "turnon" else "turnoff"
-		val url = "https://account-devices-lamp.myq-cloud.com/api/v5.2/Accounts/$accountId/lamps/$deviceSerial/$command"
-		val response = http.put(url)
+		val response = http.put(MyQData.lampUrl(accountId, deviceSerial, command))
 
 		if (!response.status.isSuccess()) {
 			throw Error("Failed to set lamp state! ${response.bodyAsText()}")
