@@ -53,8 +53,10 @@ internal class MyQTests {
 	fun `open garage door`() {
 		assertDoesNotThrow {
 			runBlocking {
-				val device = devices.first { it.deviceFamily == "garagedoor" }
-				// myQ.setGarageDoorState(device, open = true)
+				if (System.getenv("garagedoor").toBoolean()) {
+					val device = devices.first { it.deviceFamily == "garagedoor" }
+					myQ.setGarageDoorState(device, open = true)
+				}
 			}
 		}
 	}
