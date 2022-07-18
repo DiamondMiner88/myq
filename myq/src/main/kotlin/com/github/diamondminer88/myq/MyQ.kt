@@ -107,7 +107,7 @@ public class MyQ {
 		}
 
 		if ((loginResponse.headers.getAll(HttpHeaders.SetCookie)?.size ?: 0) < 2) {
-			throw Error("Invalid com.github.diamondminer88.myq.MyQ login credentials!")
+			throw Error("Invalid MyQ login credentials!")
 		}
 
 		val oauthRedirectResponse = disableRedirects(http) {
