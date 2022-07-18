@@ -4,12 +4,12 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.test.Test
 
 internal class SampleTest {
-    @Test
-    fun run() {
-        assertDoesNotThrow {
-            runBlocking {
-                MyQ().login(System.getenv("email"), System.getenv("password"))
-            }
-        }
-    }
+	@Test
+	fun run() {
+		assertDoesNotThrow {
+			runBlocking {
+				MyQ().login(System.getenv("email"), System.getenv("password"))
+			}
+		}
+	}
 }

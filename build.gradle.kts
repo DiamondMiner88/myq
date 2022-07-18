@@ -2,11 +2,11 @@ group = "com.github.diamondminer88"
 version = "1.0.0"
 
 subprojects {
-    repositories {
-        mavenCentral()
-    }
+	repositories {
+		mavenCentral()
+	}
 }
 
 task<Delete>("clean") {
-    delete(rootProject.buildDir)
+	delete(rootProject.buildDir)
 }
