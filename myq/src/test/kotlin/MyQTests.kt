@@ -1,4 +1,5 @@
 import com.github.diamondminer88.myq.MyQ
+import com.github.diamondminer88.myq.model.MyQDevice
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.*
 
@@ -6,6 +7,7 @@ import org.junit.jupiter.api.*
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 internal class MyQTests {
 	private val myQ = MyQ()
+	lateinit var devices: List<MyQDevice>
 
 	@Test
 	@Order(1)
@@ -38,10 +40,21 @@ internal class MyQTests {
 	}
 
 	@Test
+	@Order(4)
 	fun `fetch devices`() {
 		assertDoesNotThrow {
 			runBlocking {
-				myQ.fetchDevices()
+				devices = myQ.fetchDevices()
+			}
+		}
+	}
+
+	@Test
+	fun `open garage door`() {
+		assertDoesNotThrow {
+			runBlocking {
+				val device = devices.first { it.deviceFamily == "garagedoor" }
+				// myQ.setGarageDoorState(device, open = true)
 			}
 		}
 	}

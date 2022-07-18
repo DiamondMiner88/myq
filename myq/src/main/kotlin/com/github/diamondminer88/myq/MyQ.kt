@@ -231,6 +231,53 @@ public class MyQ {
 		return http.get("https://devices.myq-cloud.com/api/v5.2/Accounts/${accountId}/Devices")
 			.body<MyQDevicesResponse>()
 			.devices
-			.also { println(it) }
+	}
+
+	/**
+	 * Open/close a garage door through myQ.
+	 */
+	public suspend fun setGarageDoorState(device: MyQDevice, open: Boolean) {
+		if (device.deviceFamily != "garagedoor") {
+			throw Error("Incompatible device type! (${device.deviceFamily})")
+		}
+
+		setGarageDoorState(device.account, device.serial, open)
+	}
+
+	/**
+	 * Open/close a garage door through myQ.
+	 */
+	public suspend fun setGarageDoorState(accountId: UUID, deviceSerial: String, open: Boolean) {
+		val command = if (open) "open" else "close"
+		val url = "https://account-devices-gdo.myq-cloud.com/api/v5.2/Accounts/$accountId/door_openers/$deviceSerial/$command"
+		val response = http.put(url)
+
+		if (!response.status.isSuccess()) {
+			throw Error("Failed to set garage door state! ${response.bodyAsText()}")
+		}
+	}
+
+	/**
+	 * Turn on/off a lamp through myQ.
+	 */
+	public suspend fun setLampState(device: MyQDevice, isOn: Boolean) {
+		if (device.deviceFamily != "lamps") {
+			throw Error("Incompatible device type! (${device.deviceFamily})")
+		}
+
+		setLampState(device.account, device.serial, isOn)
+	}
+
+	/**
+	 * Turn on/off a lamp through myQ.
+	 */
+	public suspend fun setLampState(accountId: UUID, deviceSerial: String, isOn: Boolean) {
+		val command = if (isOn) "turnon" else "turnoff"
+		val url = "https://account-devices-lamp.myq-cloud.com/api/v5.2/Accounts/$accountId/lamps/$deviceSerial/$command"
+		val response = http.put(url)
+
+		if (!response.status.isSuccess()) {
+			throw Error("Failed to set lamp state! ${response.bodyAsText()}")
+		}
 	}
 }
