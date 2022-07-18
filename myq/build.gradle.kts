@@ -1,7 +1,15 @@
 plugins {
 	id("java")
+	id("maven-publish")
 	kotlin("jvm") version "1.6.21"
 	kotlin("plugin.serialization") version "1.6.21"
+}
+
+group = "com.github.diamondminer88"
+version = "1.0.0"
+
+repositories {
+	mavenCentral()
 }
 
 dependencies {
@@ -31,5 +39,14 @@ tasks {
 	}
 	test {
 		useJUnitPlatform()
+	}
+}
+
+publishing {
+	publications {
+		register(project.name, MavenPublication::class) {
+			from(components["java"])
+			artifact(tasks["kotlinSourcesJar"])
+		}
 	}
 }
