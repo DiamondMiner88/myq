@@ -6,7 +6,7 @@ import java.util.*
 
 // for later: https://auth0.com/docs/get-started/authentication-and-authorization-flow/call-your-api-using-the-authorization-code-flow-with-pkce
 
-object PkceUtil {
+internal object PkceUtils {
 	fun generateCodeVerifier(): String {
 		val secureRandom = SecureRandom()
 		val codeVerifier = ByteArray(32)

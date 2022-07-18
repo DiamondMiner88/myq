@@ -2,10 +2,10 @@
 
 package com.github.diamondminer88.myq
 
-import com.github.diamondminer88.myq.model.MyQAccount
-import com.github.diamondminer88.myq.model.MyQAuthResponse
+import com.github.diamondminer88.myq.model.*
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -21,13 +21,34 @@ public class MyQ {
 				ignoreUnknownKeys = true
 			})
 		}
+		defaultRequest {
+			if (accessToken != null) {
+				header(HttpHeaders.Authorization, accessToken)
+			}
+		}
 	}
 
-	private var accounts: Array<MyQAccount>? = null
+	private var accounts: List<MyQAccount>? = null
 	private var tokenScope: String? = null
 	private var accessToken: String? = null
 	private var expiresAt: Long? = null
 	private var refreshToken: String? = null
+
+	/**
+	 * Get the cached refresh token after a login has already occurred.
+	 */
+	public fun getRefreshToken(): String {
+		return refreshToken
+			?: throw Error("This MyQ instance has not been initialized with a login yet!")
+	}
+
+	/**
+	 * Gets the cached myQ homes (accounts) for the current token.
+	 */
+	public fun getCachedAccounts(): List<MyQAccount> {
+		return accounts
+			?: throw Error("This MyQ instance has not been initialized with a login yet!")
+	}
 
 	private fun clearInternalState() {
 		http.config { followRedirects = true }
@@ -42,12 +63,11 @@ public class MyQ {
 	 * Retrieve an access token & refresh token using the OAuth2 login flow.
 	 * It's recommended to save the refresh token and re-use it instead of re-authorizing every single time.
 	 */
-	@Throws()
 	public suspend fun login(email: String, password: String) {
 		clearInternalState()
 
-		val pkceVerifier = PkceUtil.generateCodeVerifier()
-		val pkceChallenge = PkceUtil.generateCodeChallenge(pkceVerifier)
+		val pkceVerifier = PkceUtils.generateCodeVerifier()
+		val pkceChallenge = PkceUtils.generateCodeChallenge(pkceVerifier)
 
 		val authPage = http.get("https://partner-identity.myq-cloud.com/connect/authorize") {
 			header(HttpHeaders.UserAgent, "null")
@@ -71,7 +91,7 @@ public class MyQ {
 				?: throw Error("Failed to parse auth page")
 		}
 
-		val loginResponse = disableRedirects {
+		val loginResponse = disableRedirects(http) {
 			http.post(authPage.request.url) {
 				header(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded)
 				header(HttpHeaders.Cookie, authPageCookies)
@@ -90,7 +110,7 @@ public class MyQ {
 			throw Error("Invalid com.github.diamondminer88.myq.MyQ login credentials!")
 		}
 
-		val oauthRedirectResponse = disableRedirects {
+		val oauthRedirectResponse = disableRedirects(http) {
 			val oauthRedirect = loginResponse.headers[HttpHeaders.Location]
 				?: throw Error("Could not find redirect in login page")
 			val oauthRedirectUrl = URLBuilder(oauthRedirect).apply {
@@ -132,12 +152,8 @@ public class MyQ {
 			throw Error("Failed to get access token: ${request.bodyAsText()}")
 		}
 
-		val auth = request.body<MyQAuthResponse>()
-		this.refreshToken = auth.refreshToken
-		this.accessToken = auth.accessToken
-		this.tokenScope = auth.tokenScope
-		this.expiresAt = System.currentTimeMillis() + auth.expiresInSeconds * 1000
-		// TODO: fetch accounts
+		updateAuthState(request.body())
+		refreshAccounts()
 	}
 
 	/**
@@ -147,39 +163,74 @@ public class MyQ {
 	public suspend fun login(refreshToken: String) {
 		clearInternalState()
 		this.refreshToken = refreshToken
-		refreshLogin()
+		refreshToken()
+		refreshAccounts()
 	}
 
 	/**
-	 * Get the cached refresh token after a login has already occurred.
+	 * Gets a new access token through the refresh token.
 	 */
-	public fun getRefreshToken(): String {
-		return refreshToken
-			?: throw Error("This MyQ instance has not been initialized with a login yet!")
-	}
-
-	private suspend fun refreshLogin() {
+	internal suspend fun refreshToken() {
 		val token = getRefreshToken()
+
+		val body = Parameters.build {
+			append("client_id", "IOS_CGI_MYQ")
+			append("client_secret", Base64.getDecoder().decode("VUQ0RFhuS3lQV3EyNUJTdw==").toString())
+			append("redirect_uri", "com.myqops://ios")
+			append("grant_type", "refresh_token")
+			append("refresh_token", token)
+			append("scope", tokenScope!!)
+		}
+
+		val response = http.post("https://partner-identity.myq-cloud.com/connect/token") {
+			header(HttpHeaders.UserAgent, "null")
+			header(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded)
+			setBody(body.formUrlEncode())
+		}
+
+		if (!response.status.isSuccess()) {
+			throw Error("Failed to get refresh token: ${response.bodyAsText()}")
+		}
+
+		updateAuthState(response.body())
 	}
 
-	private suspend fun <T> disableRedirects(block: suspend () -> T): T {
-		http.config { followRedirects = false }
-		try {
-			return block()
-		} catch (t: Throwable) {
-			throw t
-		} finally {
-			http.config { followRedirects = true }
+	private fun updateAuthState(auth: MyQAuthResponse) {
+		this.refreshToken = auth.refreshToken
+		this.accessToken = auth.tokenType + ' ' + auth.accessToken
+		this.tokenScope = auth.tokenScope
+		this.expiresAt = System.currentTimeMillis() + auth.expiresInSeconds * 1000
+	}
+
+	internal suspend fun refreshAccounts() {
+		val response = http.get("https://accounts.myq-cloud.com/api/v6.0/accounts")
+		val data = response.body<MyQAccountsResponse>()
+		this.accounts = data.accounts
+	}
+
+	/**
+	 * Fetch all devices from all accounts/homes.
+	 */
+	public suspend fun fetchDevices(): List<MyQDevice> {
+		return getCachedAccounts().flatMap {
+			fetchDevices(it.id)
 		}
 	}
 
 	/**
-	 * Convert the Set-Cookie headers from a response to the Cookie header format for requests.
+	 * Fetch all devices for a specific account/home.
 	 */
-	private fun convertSetCookies(headers: Headers): String {
-		return headers
-			.getAll(HttpHeaders.SetCookie)
-			?.joinToString("; ") { cookie -> cookie.takeWhile { it != ';' } }
-			?: throw Error("Failed to parse cookies")
+	public suspend fun fetchDevices(account: MyQAccount): List<MyQDevice> {
+		return fetchDevices(account.id)
+	}
+
+	/**
+	 * Fetch all devices for a specific account/home.
+	 */
+	public suspend fun fetchDevices(accountId: UUID): List<MyQDevice> {
+		return http.get("https://devices.myq-cloud.com/api/v5.2/Accounts/${accountId}/Devices")
+			.body<MyQDevicesResponse>()
+			.devices
+			.also { println(it) }
 	}
 }
