@@ -1,5 +1,8 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package com.github.diamondminer88.myq
 
+import com.github.diamondminer88.myq.model.MyQAccount
 import com.github.diamondminer88.myq.model.MyQAuthResponse
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -11,9 +14,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import java.util.*
 
-class MyQAccount
-
-class MyQ {
+public class MyQ {
 	private val http: HttpClient = HttpClient {
 		install(ContentNegotiation) {
 			json(Json {
@@ -26,15 +27,25 @@ class MyQ {
 	private var tokenScope: String? = null
 	private var accessToken: String? = null
 	private var expiresAt: Long? = null
-	var refreshToken: String? = null
-		private set
+	private var refreshToken: String? = null
+
+	private fun clearInternalState() {
+		http.config { followRedirects = true }
+		accounts = null
+		tokenScope = null
+		accessToken = null
+		expiresAt = null
+		refreshToken = null
+	}
 
 	/**
 	 * Retrieve an access token & refresh token using the OAuth2 login flow.
 	 * It's recommended to save the refresh token and re-use it instead of re-authorizing every single time.
 	 */
 	@Throws()
-	suspend fun login(email: String, password: String) {
+	public suspend fun login(email: String, password: String) {
+		clearInternalState()
+
 		val pkceVerifier = PkceUtil.generateCodeVerifier()
 		val pkceChallenge = PkceUtil.generateCodeChallenge(pkceVerifier)
 
@@ -126,21 +137,29 @@ class MyQ {
 		this.accessToken = auth.accessToken
 		this.tokenScope = auth.tokenScope
 		this.expiresAt = System.currentTimeMillis() + auth.expiresInSeconds * 1000
+		// TODO: fetch accounts
 	}
 
 	/**
 	 * Re-use an existing refresh token from a previous login.
 	 */
 	@Throws
-	suspend fun login(refreshToken: String) {
+	public suspend fun login(refreshToken: String) {
+		clearInternalState()
 		this.refreshToken = refreshToken
 		refreshLogin()
 	}
 
+	/**
+	 * Get the cached refresh token after a login has already occurred.
+	 */
+	public fun getRefreshToken(): String {
+		return refreshToken
+			?: throw Error("This MyQ instance has not been initialized with a login yet!")
+	}
+
 	private suspend fun refreshLogin() {
-		if (this.refreshToken == null) {
-			throw Error("This MyQ instance has been initialized with a login yet!")
-		}
+		val token = getRefreshToken()
 	}
 
 	private suspend fun <T> disableRedirects(block: suspend () -> T): T {
