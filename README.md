@@ -1,4 +1,4 @@
-# myQ ![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FDiamondMiner88%2Fmyq%2F&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=views&edge_flat=true)
+# myQ ![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FDiamondMiner88%2Fmyq%2F&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=views&edge_flat=true) ![JitPack](https://img.shields.io/jitpack/v/github/DiamondMiner88/myq?style=flat-square)
 
 A Kotlin library for using the myQ API to interact with Liftmaster/Chamberlain devices.
 
