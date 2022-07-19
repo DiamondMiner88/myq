@@ -166,10 +166,13 @@ public class MyQ {
 	}
 
 	/**
-	 * Gets a new access token through the refresh token.
+	 * Gets a new access token through the refresh token if it's (almost) expired.
 	 */
 	internal suspend fun refreshToken() {
 		val token = getRefreshToken()
+
+		if (expiresAt!! > System.currentTimeMillis())
+			return
 
 		val body = Parameters.build {
 			append("client_id", MyQData.clientId)
@@ -196,10 +199,11 @@ public class MyQ {
 	private fun updateAuthState(auth: MyQAuthResponse) {
 		this.refreshToken = auth.refreshToken
 		this.accessToken = auth.tokenType + ' ' + auth.accessToken
-		this.expiresAt = System.currentTimeMillis() + auth.expiresInSeconds * 1000
+		this.expiresAt = System.currentTimeMillis() + (auth.expiresInSeconds - 60) * 1000
 	}
 
 	internal suspend fun refreshAccounts() {
+		refreshToken()
 		val response = http.get(MyQData.accountsUrl)
 		val data = response.body<MyQAccountsResponse>()
 		this.accounts = data.accounts
@@ -225,6 +229,7 @@ public class MyQ {
 	 * Fetch all devices for a specific account/home.
 	 */
 	public suspend fun fetchDevices(accountId: UUID): List<MyQDevice> {
+		refreshToken()
 		return http.get(MyQData.devicesUrl(accountId))
 			.body<MyQDevicesResponse>()
 			.devices
@@ -245,6 +250,8 @@ public class MyQ {
 	 * Open/close a garage door through myQ.
 	 */
 	public suspend fun setGarageDoorState(accountId: UUID, deviceSerial: String, open: Boolean) {
+		refreshToken()
+
 		val command = if (open) "open" else "close"
 		val response = http.put(MyQData.garageDoorUrl(accountId, deviceSerial, command))
 
@@ -268,6 +275,8 @@ public class MyQ {
 	 * Turn on/off a lamp through myQ.
 	 */
 	public suspend fun setLampState(accountId: UUID, deviceSerial: String, isOn: Boolean) {
+		refreshToken()
+
 		val command = if (isOn) "turnon" else "turnoff"
 		val response = http.put(MyQData.lampUrl(accountId, deviceSerial, command))
 
