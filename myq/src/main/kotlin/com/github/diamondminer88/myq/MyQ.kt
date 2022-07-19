@@ -22,6 +22,7 @@ public class MyQ {
 			})
 		}
 		defaultRequest {
+			header(HttpHeaders.UserAgent, MyQData.userAgent)
 			if (accessToken != null) {
 				header(HttpHeaders.Authorization, accessToken)
 			}
@@ -68,7 +69,6 @@ public class MyQ {
 		val pkceChallenge = PkceUtils.generateCodeChallenge(pkceVerifier)
 
 		val authPage = http.get(MyQData.authUrl) {
-			header(HttpHeaders.UserAgent, "null")
 			url.parameters.apply {
 				append("redirect_uri", MyQData.redirectUri)
 				append("client_id", MyQData.clientId)
@@ -93,7 +93,6 @@ public class MyQ {
 			http.post(authPage.request.url) {
 				header(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded)
 				header(HttpHeaders.Cookie, authPageCookies)
-				header(HttpHeaders.UserAgent, "null")
 
 				val loginInfo = Parameters.build {
 					append("Email", email)
@@ -116,7 +115,6 @@ public class MyQ {
 				protocol = loginResponse.request.url.protocol
 			}
 			http.get(oauthRedirectUrl.build()) {
-				header(HttpHeaders.UserAgent, "null")
 				header(HttpHeaders.Cookie, convertSetCookies(loginResponse.headers))
 			}
 		}
@@ -141,7 +139,6 @@ public class MyQ {
 			)
 		}
 		val request = http.post(MyQData.refreshUrl) {
-			header(HttpHeaders.UserAgent, "null")
 			header(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded)
 			setBody(requestBody.formUrlEncode())
 		}
@@ -184,7 +181,6 @@ public class MyQ {
 		}
 
 		val response = http.post(MyQData.refreshUrl) {
-			header(HttpHeaders.UserAgent, "null")
 			header(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded)
 			setBody(body.formUrlEncode())
 		}

@@ -8,6 +8,7 @@ internal object MyQData {
 	const val clientId = "IOS_CGI_MYQ"
 	const val redirectUri = "com.myqops://ios"
 	const val tokenScope = "MyQ_Residential offline_access"
+	const val userAgent = "null" // No specific user agent is needed yet
 
 	const val authUrl = "https://partner-identity.myq-cloud.com/connect/authorize"
 	const val refreshUrl = "https://partner-identity.myq-cloud.com/connect/token"
