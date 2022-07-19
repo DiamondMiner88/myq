@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-	implementation("com.github.DiamondMiner88.myq:myq:1.0.0")
+	implementation("com.github.DiamondMiner88:myq:1.0.0")
 }
 ```
 
